@@ -1,0 +1,36 @@
+{
+  "semillas": [
+    42,
+    123,
+    2026
+  ],
+  "recompensa": "simple",
+  "pasos": 30000,
+  "longitud_episodio": 256,
+  "capital_inicial": 100000.0,
+  "tasa_costo": 0.001,
+  "gamma": 0.99,
+  "lr": 0.0005,
+  "batch_size": 64,
+  "buffer_size": 20000,
+  "inicio_aprendizaje": 1000,
+  "frecuencia_target": 500,
+  "epsilon_inicial": 1.0,
+  "epsilon_final": 0.05,
+  "epsilon_decay": 20000,
+  "semilla_congelada": 2026,
+  "metricas_validacion_congelada": {
+    "recompensa": "simple",
+    "semilla": 2026,
+    "retorno": -0.45339386076996957,
+    "max_drawdown": -0.4575535970165582,
+    "operaciones": 416,
+    "operaciones_por_1000_pasos": 84.24463345484001,
+    "costos_totales": 15547.6581185641,
+    "exposicion_0": 0.018226002430133656,
+    "exposicion_50": 0.9254759011745646,
+    "exposicion_100": 0.05629809639530174,
+    "capital_final": 54660.613923003046
+  },
+  "regla_seleccion": "Mayor retorno de validacion entre semillas entrenadas con la recompensa final, con max_drawdown <= 1.15x la mediana de drawdown del grupo; held-out no utilizado."
+}

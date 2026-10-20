@@ -1,0 +1,5 @@
+politica,tasa_costo,retorno_acumulado,max_drawdown,costos_totales,operaciones
+Siempre 0 % (efectivo),0.001,0.0,0.0,0.0,0
+Siempre 50 %,0.001,-0.30072251100979885,-0.34192475829770674,50.0,1
+Siempre 100 % (comprar y mantener),0.001,-0.540540003958526,-0.58947815147703,100.0,1
+Alterna 0 % / 100 % cada hora,0.001,-0.9916878289295296,-0.9916878289295296,104570.68891264158,4938

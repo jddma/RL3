@@ -1,0 +1,39 @@
+{
+  "fuente": "data/bitfinex2-BTCUSDT-1h.pkl",
+  "filas_originales": 32953,
+  "filas_utiles": 32929,
+  "columnas_estado": [
+    "retorno_1h",
+    "distancia_media_24h",
+    "volatilidad_24h",
+    "posicion_actual"
+  ],
+  "particiones": {
+    "train": {
+      "filas": 23050,
+      "inicio": "2019-03-12 13:00:00+00:00",
+      "fin": "2021-11-15 04:00:00+00:00"
+    },
+    "validacion": {
+      "filas": 4939,
+      "inicio": "2021-11-15 05:00:00+00:00",
+      "fin": "2022-06-08 23:00:00+00:00"
+    },
+    "heldout": {
+      "filas": 4940,
+      "inicio": "2022-06-09 00:00:00+00:00",
+      "fin": "2022-12-31 23:00:00+00:00"
+    }
+  },
+  "media_entrenamiento": {
+    "retorno_1h": 0.00015866132763400537,
+    "distancia_media_24h": 0.0015264216386907871,
+    "volatilidad_24h": 0.007039776956318743
+  },
+  "desviacion_entrenamiento": {
+    "retorno_1h": 0.008480680390540092,
+    "distancia_media_24h": 0.022217390329312962,
+    "volatilidad_24h": 0.004752729183286683
+  },
+  "observacion": "posicion_actual la agrega el entorno; no es una columna de mercado"
+}
