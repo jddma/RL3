@@ -1,0 +1,48 @@
+{
+  "semillas": [
+    42,
+    123,
+    2026
+  ],
+  "recompensa": "simple",
+  "pasos": 30000,
+  "longitud_episodio": 256,
+  "capital_inicial": 100000.0,
+  "tasa_costo": 0.001,
+  "gamma": 0.99,
+  "lr": 0.0005,
+  "batch_size": 64,
+  "buffer_size": 20000,
+  "inicio_aprendizaje": 1000,
+  "frecuencia_target": 500,
+  "epsilon_inicial": 1.0,
+  "epsilon_final": 0.05,
+  "epsilon_decay": 20000,
+  "recompensas_comparadas": [
+    "simple",
+    "log"
+  ],
+  "datos": "C:\\IA\\Simulacion_Aprendizaje_Refuerzo\\Unidad_5\\Agente_Inversor\\resultados_corregidos",
+  "protocolo": "Mismas semillas y pasos para ambas recompensas; entorno y datos corregidos; seleccion solo en validacion.",
+  "recompensa_final": "simple",
+  "semilla_congelada": 123,
+  "metricas_validacion": {
+    "recompensa": "simple",
+    "semilla": 123,
+    "retorno": -0.4254380469168308,
+    "max_drawdown": -0.4869050792972211,
+    "operaciones": 462,
+    "operaciones_por_1000_pasos": 93.56014580801944,
+    "costos_totales": 32265.944740786523,
+    "proporcion_accion_0": 0.7841231267719725,
+    "proporcion_accion_50": 0.006480356419603,
+    "proporcion_accion_100": 0.2093965168084244,
+    "exposicion_real_media": 0.2126395330468954,
+    "capital_final": 57456.195308316914
+  },
+  "checkpoint_origen": "resultados_comparacion_recompensas\\dqn_simple_123.pt",
+  "sha256_checkpoint": "e9e7939454641152937860a55c86585b956b498a7bc3892f12aa47678fb3a525",
+  "regla_seleccion": "Mayor retorno en validacion entre semillas de recompensa simple con magnitud del drawdown <= 1.15 veces la mediana del grupo.",
+  "justificacion_recompensa": "Retorno medio practicamente igual al log, menor dispersion entre semillas, menor caida promedio y menores costos promedio. Sin afirmacion de superioridad estadistica.",
+  "heldout_utilizado_para_seleccion": false
+}

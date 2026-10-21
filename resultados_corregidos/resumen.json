@@ -1,0 +1,53 @@
+{
+  "fuente": "OHLCV recuperado de los tres CSV originales",
+  "limitacion": "No se recuperaron las 24 observaciones iniciales descartadas.",
+  "tratamiento_huecos": "Indicadores independientes por segmento horario; 24 filas de calentamiento por segmento.",
+  "cortes_originales": {
+    "train": {
+      "filas": 23050,
+      "inicio": "2019-03-12 13:00:00+00:00",
+      "fin": "2021-11-15 04:00:00+00:00"
+    },
+    "validacion": {
+      "filas": 4939,
+      "inicio": "2021-11-15 05:00:00+00:00",
+      "fin": "2022-06-08 23:00:00+00:00"
+    },
+    "heldout": {
+      "filas": 4940,
+      "inicio": "2022-06-09 00:00:00+00:00",
+      "fin": "2022-12-31 23:00:00+00:00"
+    }
+  },
+  "particiones": {
+    "train": {
+      "filas": 21606,
+      "inicio": "2019-04-03 03:00:00+00:00",
+      "fin": "2021-11-15 04:00:00+00:00",
+      "segmentos": 31
+    },
+    "validacion": {
+      "filas": 4939,
+      "inicio": "2021-11-15 05:00:00+00:00",
+      "fin": "2022-06-08 23:00:00+00:00",
+      "segmentos": 1
+    },
+    "heldout": {
+      "filas": 4916,
+      "inicio": "2022-06-09 00:00:00+00:00",
+      "fin": "2022-12-31 23:00:00+00:00",
+      "segmentos": 2
+    }
+  },
+  "media_entrenamiento": {
+    "retorno_1h": 0.0001529684529615553,
+    "distancia_media_24h": 0.001444776489606949,
+    "volatilidad_24h": 0.007114160302425202
+  },
+  "desviacion_entrenamiento": {
+    "retorno_1h": 0.008545149936837906,
+    "distancia_media_24h": 0.022355342760706554,
+    "volatilidad_24h": 0.0047723026997525736
+  },
+  "pendiente": "Adaptar el entorno para no cruzar segmentos."
+}

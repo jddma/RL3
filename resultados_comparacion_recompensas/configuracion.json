@@ -1,0 +1,27 @@
+{
+  "semillas": [
+    42,
+    123,
+    2026
+  ],
+  "recompensa": "simple",
+  "pasos": 30000,
+  "longitud_episodio": 256,
+  "capital_inicial": 100000.0,
+  "tasa_costo": 0.001,
+  "gamma": 0.99,
+  "lr": 0.0005,
+  "batch_size": 64,
+  "buffer_size": 20000,
+  "inicio_aprendizaje": 1000,
+  "frecuencia_target": 500,
+  "epsilon_inicial": 1.0,
+  "epsilon_final": 0.05,
+  "epsilon_decay": 20000,
+  "recompensas_comparadas": [
+    "simple",
+    "log"
+  ],
+  "datos": "C:\\IA\\Simulacion_Aprendizaje_Refuerzo\\Unidad_5\\Agente_Inversor\\resultados_corregidos",
+  "protocolo": "Mismas semillas y pasos para ambas recompensas; entorno y datos corregidos; seleccion solo en validacion."
+}

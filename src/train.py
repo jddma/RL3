@@ -41,7 +41,11 @@ except ImportError:  # al ejecutar directamente desde src/
     from environment import EntornoInversion
 
 ROOT = Path(__file__).resolve().parents[1]
-RESULTADOS = ROOT / "resultados"
+# AJUSTE RECOMENDADO
+# RESULTADOS = ROOT / "resultados"
+DATOS = ROOT / "resultados_corregidos"
+RESULTADOS = ROOT / "resultados_dqn"
+# FIN DE AJUSTE RECOMENDADO
 
 # Hiperparametros ya congelados en experimento.py (ver README.md); se
 # reutilizan tal cual para el modelo final de este entrenamiento.
@@ -84,10 +88,15 @@ def construir_agente(env: EntornoInversion, seed: int) -> DQNAgent:
 def entrenar(datos: pd.DataFrame, recompensa: str, seed: int, pasos: int):
     """Entrena un agente DQN desde cero sobre ``datos`` (solo train.csv).
 
-    Episodios de longitud fija con inicio aleatorio (igual que en
-    ``experimento.py``), sin hacer bootstrap a traves del limite temporal del
-    episodio. Devuelve el agente entrenado y el historial de recompensa
-    acumulada por episodio.
+    Episodios de longitud fija con inicio aleatorio, restringidos a
+    segmentos horarios continuos.
+
+    Los limites artificiales de longitud permiten bootstrap cuando existe
+    continuacion dentro del segmento. El final del segmento no permite
+    bootstrap porque no hay una transicion horaria posterior disponible.
+
+    Devuelve el agente entrenado y el historial de recompensa acumulada
+    por episodio.
     """
     fijar_semillas(seed)
     env = EntornoInversion(
@@ -104,9 +113,31 @@ def entrenar(datos: pd.DataFrame, recompensa: str, seed: int, pasos: int):
     episodio = 0
     for paso in range(pasos):
         accion = agente.actuar(obs, paso)
+    # AJUSTE RECOMENDADO 
+    #    siguiente_obs, r, terminado, truncado, _info = env.step(accion)
+    #    done = terminado or truncado
+    #    agente.observar(obs, accion, r, siguiente_obs, done)
         siguiente_obs, r, terminado, truncado, _info = env.step(accion)
+
+        # Reiniciar el episodio tanto por terminación como por truncamiento.
         done = terminado or truncado
-        agente.observar(obs, accion, r, siguiente_obs, done)
+
+        # No estimar continuación al final del segmento disponible.
+        fin_segmento = env.segmentos[_info["segmento"]][1] if (
+            "segmento" in _info
+        ) else next(
+            fin for inicio, fin in env.segmentos
+            if inicio <= env._t <= fin
+        )
+
+        sin_continuacion = terminado or env._t >= fin_segmento
+
+        # El límite artificial de 256 pasos permite bootstrap si hay
+        # más observaciones horarias dentro del mismo segmento.
+        agente.observar(
+            obs, accion, r, siguiente_obs, sin_continuacion
+        )
+    # FIN DE AJUSTE RECOMENDADO    
         obs = siguiente_obs
         recompensa_episodio += r
         perdida = agente.aprender()
@@ -136,16 +167,25 @@ def validar(datos: pd.DataFrame, agente: DQNAgent, recompensa: str, seed: int) -
     obs, _ = env.reset(seed=seed)
     curva = [CONFIG["capital_inicial"]]
     posiciones = []
+    # AJUSTE RECOMENDADO
+    acciones = []
+    # FIN DE AJUSTE RECOMENDADO
     info = {}
     while True:
         accion = agente.actuar_greedy(obs)
         obs, _r, terminado, truncado, info = env.step(accion)
         curva.append(info["capital"])
         posiciones.append(info["posicion"])
+        # AJUSTE RECOMENDADO
+        acciones.append(accion)
+        # FIN DE AJUSTE RECOMENDADO
         if terminado or truncado:
             break
     curva = np.array(curva)
     pos = np.array(posiciones)
+    # AJUSTE RECOMENDADO
+    acciones = np.array(acciones)
+    # FIN DE AJUSTE RECOMENDADO
     maximos = np.maximum.accumulate(curva)
     return dict(
         recompensa=recompensa, semilla=seed,
@@ -154,9 +194,15 @@ def validar(datos: pd.DataFrame, agente: DQNAgent, recompensa: str, seed: int) -
         operaciones=int(info["operaciones"]),
         operaciones_por_1000_pasos=float(info["operaciones"] / len(pos) * 1000),
         costos_totales=float(info["costo_total"]),
-        exposicion_0=float(np.mean(pos == 0)),
-        exposicion_50=float(np.mean(pos == 0.5)),
-        exposicion_100=float(np.mean(pos == 1)),
+        # AJUSTE RECOMENDADO 
+        # exposicion_0=float(np.mean(pos == 0)),
+        # exposicion_50=float(np.mean(pos == 0.5)),
+        # exposicion_100=float(np.mean(pos == 1)),
+        proporcion_accion_0=float(np.mean(acciones == 0)),
+        proporcion_accion_50=float(np.mean(acciones == 1)),
+        proporcion_accion_100=float(np.mean(acciones == 2)),
+        exposicion_real_media=float(np.mean(pos)),
+        # FIN DE AJUSTE RECOMENDADO
         capital_final=float(curva[-1]),
     )
 
@@ -193,9 +239,21 @@ def main() -> None:
     args = parser.parse_args()
 
     args.salida.mkdir(exist_ok=True)
-    train = pd.read_csv(RESULTADOS / "train.csv", index_col=0, parse_dates=True)
-    val = pd.read_csv(RESULTADOS / "validacion.csv", index_col=0, parse_dates=True)
-
+    # AJUSTES RECOMENDADOS 
+    # train = pd.read_csv(RESULTADOS / "train.csv", index_col=0, parse_dates=True)
+    # val = pd.read_csv(RESULTADOS / "validacion.csv", index_col=0, parse_dates=True)
+    train = pd.read_csv(
+        DATOS / "train.csv",
+        index_col=0,
+        parse_dates=True,
+    )
+    val = pd.read_csv(
+        DATOS / "validacion.csv",
+        index_col=0,
+        parse_dates=True,
+    )
+    # FIN DE AJUSTES RECOMENDADOS
+     
     config_ejecucion = {**CONFIG, "recompensa": args.recompensa, "semillas": args.semillas, "pasos": args.pasos}
     (args.salida / "configuracion_agente.json").write_text(
         json.dumps(config_ejecucion, indent=2), encoding="utf-8"
