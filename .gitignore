@@ -3,3 +3,9 @@ __pycache__/
 tmp/
 venv/
 .venv/
+
+.pytest_cache/
+respaldos/
+resultados_dqn_prueba/
+resultados_corregidos_reproducidos/
+modelo_congelado_reproducido/

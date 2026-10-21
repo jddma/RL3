@@ -1,0 +1,15 @@
+{
+  "particion": "train",
+  "archivo": "resultados_corregidos/train.csv",
+  "filas": 21606,
+  "inicio": "2019-04-03 03:00:00+00:00",
+  "fin": "2021-11-15 04:00:00+00:00",
+  "segmentos": 31,
+  "retorno_horario_medio_pct": 0.01529684529615553,
+  "desviacion_retorno_horario_pct": 0.8545149936837906,
+  "retorno_horario_minimo_pct": -17.21841737540324,
+  "retorno_horario_maximo_pct": 17.60630446169229,
+  "asimetria_retornos": -0.2858277717826048,
+  "exceso_curtosis_retornos": 41.468554569333946,
+  "nota": "Indicadores recuperados con el escalado de entrenamiento. Los huecos entre filas retenidas incluyen el calentamiento descartado; no equivalen directamente a horas ausentes en la fuente. No se leyeron validación ni heldout."
+}

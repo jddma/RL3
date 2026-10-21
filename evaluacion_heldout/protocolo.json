@@ -1,0 +1,9 @@
+{
+  "particion": "heldout",
+  "sha256_checkpoint": "e9e7939454641152937860a55c86585b956b498a7bc3892f12aa47678fb3a525",
+  "capital_inicial_por_segmento": 100000.0,
+  "tasa_costo": 0.001,
+  "posicion_inicial_por_segmento": 0.0,
+  "semilla_aleatoria_por_segmento": "42 + indice del segmento",
+  "tratamiento_segmentos": "Evaluaciones independientes con reinicio de capital y posicion; sin liquidacion forzada al terminar."
+}

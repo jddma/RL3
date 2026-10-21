@@ -22,6 +22,12 @@ def preparar(df):
     if not set(requeridas).issubset(d.columns):
         raise ValueError(f'Faltan columnas: {set(requeridas)-set(d.columns)}')
     d[requeridas] = d[requeridas].apply(pd.to_numeric, errors='coerce')
+    # AJUSTE RECOMENADO: no rellenar con datos futuros, sino rechazar
+    if not np.isfinite(d[requeridas].to_numpy(dtype=float)).all():
+        raise ValueError(
+            "Hay valores vacios, no numericos o infinitos en OHLCV"
+        )
+    # FIN AJUSTE RECOMENDADO
     if d[requeridas].isna().any().any():
         raise ValueError('Hay valores vacios o no numericos; no se rellenan con datos futuros')
     if (d[['open','high','low','close']] <= 0).any().any() or (d.volume < 0).any():
@@ -30,13 +36,53 @@ def preparar(df):
         raise ValueError('OHLC incoherente')
     return d[requeridas]
 
+# AJUSTE RECOMENDADO: funciones de indicadores y escalado para el agente
+#def indicadores(d):
+#    x = d.copy()
+#    x['retorno_1h'] = x.close.pct_change(fill_method=None)
+#    media = x.close.rolling(24, min_periods=24).mean()
+#    x['distancia_media_24h'] = x.close / media - 1
+#    x['volatilidad_24h'] = x['retorno_1h'].rolling(24, min_periods=24).std()
+#    return x.dropna(subset=FEATURES)
+
 def indicadores(d):
+    """Calcula indicadores solo dentro de tramos horarios continuos."""
+    if not isinstance(d.index, pd.DatetimeIndex):
+        raise ValueError("Se necesita un indice de fechas")
+    if not d.index.is_monotonic_increasing or not d.index.is_unique:
+        raise ValueError("Las fechas deben estar ordenadas y sin duplicados")
+
     x = d.copy()
-    x['retorno_1h'] = x.close.pct_change(fill_method=None)
-    media = x.close.rolling(24, min_periods=24).mean()
-    x['distancia_media_24h'] = x.close / media - 1
-    x['volatilidad_24h'] = x['retorno_1h'].rolling(24, min_periods=24).std()
-    return x.dropna(subset=FEATURES)
+
+    # Cada intervalo distinto de una hora inicia un nuevo segmento.
+    diferencias = x.index.to_series().diff()
+    segmentos = diferencias.ne(pd.Timedelta(hours=1)).cumsum()
+
+    partes = []
+    for _, tramo in x.groupby(segmentos):
+        tramo = tramo.copy()
+
+        tramo["retorno_1h"] = tramo["close"].pct_change(
+            fill_method=None
+        )
+
+        media = tramo["close"].rolling(
+            24, min_periods=24
+        ).mean()
+
+        tramo["distancia_media_24h"] = tramo["close"] / media - 1
+
+        tramo["volatilidad_24h"] = tramo["retorno_1h"].rolling(
+            24, min_periods=24
+        ).std()
+
+        partes.append(tramo)
+
+    if not partes:
+        return x.assign(**{columna: np.nan for columna in FEATURES})
+
+    return pd.concat(partes).dropna(subset=FEATURES)
+# FIN AJUSTE RECOMENDADO
 
 def cortes_temporales(d, train=0.7, validation=0.15):
     if not 0 < train < 1 or not 0 < validation < 1 or train + validation >= 1:

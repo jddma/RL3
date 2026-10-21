@@ -36,6 +36,13 @@ def simular(datos, politica, tasa_costo):
         recompensa=CONFIG["recompensa"],
         posicion_inicial=CONFIG["posicion_inicial"],
     )
+# AJUSTE RECOMENDADO 
+    if len(env.segmentos) != 1:
+        raise ValueError(
+            "Esta demostracion requiere un unico segmento continuo. "
+            "La evaluacion de varios segmentos se implementa por separado."
+        )
+# FIN AJUSTE RECOMENDADO    
     env.reset(seed=SEMILLA)
     capital, posiciones = [CONFIG["capital_inicial"]], []
     paso, info = 0, {}
@@ -58,10 +65,16 @@ def simular(datos, politica, tasa_costo):
 
 
 def main():
-    datos = pd.read_csv(RAIZ / "resultados" / "validacion.csv", index_col=0, parse_dates=True)
+# AJUSTE RECOMENDADO     
+    #datos = pd.read_csv(RAIZ / "resultados" / "validacion.csv", index_col=0, parse_dates=True)
+    datos = pd.read_csv(RAIZ / "resultados_corregidos" / "validacion.csv", index_col=0, parse_dates=True)
+# FIN AJUSTE RECOMENDADO    
     politicas = {
         "Siempre 0 % (efectivo)": lambda t: 0,
-        "Siempre 50 %": lambda t: 1,
+# AJUSTE RECOMENDADO 
+        # "Siempre 50 %": lambda t: 1,
+        "Objetivo 50 % con rebalance horario": lambda t: 1,
+# FIN AJUSTE RECOMENDADO        
         "Siempre 100 % (comprar y mantener)": lambda t: 2,
         "Alterna 0 % / 100 % cada hora": lambda t: 2 if t % 2 == 0 else 0,
     }
@@ -80,7 +93,11 @@ def main():
         sens.append({"costo_bps": bps, **res})
     sens = pd.DataFrame(sens)
 
-    salida = RAIZ / "resultados"
+# AJUSTE RECOMENDADO
+    # salida = RAIZ / "resultados"
+    salida = RAIZ / "resultados_corregidos"
+    salida.mkdir(parents=True, exist_ok=True)
+# FIN AJUSTE RECOMENDADO    
     tabla.to_csv(salida / "entorno_politicas_fijas_validacion.csv", index=False)
     sens.to_csv(salida / "entorno_sensibilidad_costos_validacion.csv", index=False)
 
@@ -97,7 +114,10 @@ def main():
 
     fig, ax = plt.subplots(figsize=(6, 3.8))
     ax.bar(sens["costo_bps"].astype(str), sens["costos_totales"])
-    ax.set_xlabel("Costo por unidad de rotación (pb)")
+# AJUSTE RECOMENDADO    
+    # ax.set_xlabel("Costo por unidad de rotación (pb)")
+    ax.set_xlabel("Comision sobre el importe negociado (pb)")
+# FIN AJUSTE RECOMENDADO    
     ax.set_ylabel("Costos totales pagados ($)")
     ax.set_title("Costos al alternar 0 % / 100 % cada hora")
     ax.grid(alpha=0.2, axis="y")

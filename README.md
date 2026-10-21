@@ -1,195 +1,397 @@
-# Agente de inversión con Reinforcement Learning
+# Agente inversor con aprendizaje por refuerzo
 
-Entorno de simulación de inversión en Bitcoin (BTC/USDT, datos horarios),
-comparación de dos funciones de recompensa y entrenamiento de un agente DQN
-que decide qué fracción del capital (0 %, 50 % o 100 %) mantener invertida,
-con costos de transacción y evaluación sin fuga de información hacia el
-futuro (*lookahead-safe*).
+Proyecto académico de Simulación y Aprendizaje por Refuerzo. Implementa
+un agente DQN que decide qué proporción de su capital invertir en BTC/USDT:
+0 %, 50 % o 100 %.
 
-## Objetivo
+Integra preparación de datos, entorno de inversión, comparación de
+recompensas, entrenamiento y evaluación frente a estrategias de referencia.
 
-1. Comparar retorno simple neto (A) y log-retorno neto (B) como función de
-   recompensa, usando el mismo agente DQN, los mismos datos y el mismo costo
-   de operación, sin consultar el conjunto held-out.
-2. Entrenar y congelar un agente DQN final con la recompensa elegida,
-   documentando arquitectura, hiperparámetros, semillas y criterio de
-   selección del modelo, listo para una evaluación posterior en datos no
-   vistos (held-out).
+## 1. Componentes implementados
 
-## Instalación y ejecución rápida
+| Actividad | Componentes |
+|---|---|
+| 1. Datos y estado | Limpieza, indicadores causales, separación temporal y escalado |
+| 2. Entorno | Interfaz Gymnasium, posiciones, capital, costos y segmentos continuos |
+| 3. Recompensas | Comparación experimental de retorno simple y log-retorno netos |
+| 4. Agente DQN | Red online/target, replay buffer, entrenamiento y modelo congelado |
+| 5. Evaluación | Baselines, métricas held-out, trayectorias, figuras y análisis |
 
-Desde esta carpeta:
+El informe general y las reflexiones individuales se consolidan como parte
+de la Actividad 6.
 
-```bash
-pip install -r requirements.txt
-python -m unittest discover -s tests -v
-python -m src.experimento   # compara las recompensas A y B (6 entrenamientos de 30.000 pasos)
-python -m src.train         # entrena y congela el agente DQN final (recompensa A)
+## 2. Estructura principal
+
+```text
+Agente_Inversor/
+├── README.md
+├── requirements.txt
+├── src/
+│   ├── features.py
+│   ├── environment.py
+│   ├── rewards.py
+│   ├── agent.py
+│   ├── train.py
+│   ├── experimento.py
+│   ├── baselines.py
+│   ├── evaluate.py
+│   ├── demo_entorno.py
+│   ├── eda_actividad1.py
+│   └── graficar_evaluacion.py
+│   ├── preparar_datos_corregidos.py
+│   ├── congelar_modelo.py
+├── tests/
+├── resultados_corregidos/
+├── eda_actividad1/
+├── resultados_comparacion_recompensas/
+├── modelo_congelado/
+├── evaluacion_validacion/
+├── evaluacion_heldout/
+│   └── figuras/
+└── docs/
+    ├── resultados_actividad1.md
+    └── resultados_actividad5.md
 ```
 
-**Atención:** `python -m src.experimento` ejecuta 6 entrenamientos de 30.000
-pasos y puede tardar varios minutos o más según el equipo; el archivo
-`comparacion_A_B.csv` se genera progresivamente. Entrenar sobrescribe los CSV
-y checkpoints existentes; conservar una copia de los resultados originales si
-se quieren preservar. El held-out (`heldout.csv`) no se usa en ninguno de los
-dos comandos anteriores: se reserva para una evaluación final posterior.
+`resultados/` conserva datos y figuras anteriores a las correcciones.
+No es la fuente de los resultados finales aquí reportados.
 
-## Entorno y contrato de recompensas
+## 3. Instalación y pruebas
 
-La función de recompensa recibe `(capital_antes, capital_despues)`; el
-entorno (`environment.py`) descuenta una sola vez
-`tasa_costo * abs(posicion_nueva - posicion_anterior) * capital_antes` al
-calcular el capital siguiente. Las funciones de recompensa (`rewards.py`) no
-vuelven a modificar el capital ni a descontar el costo nuevamente.
-`environment.py` implementa `recompensa='simple'|'log'`, y `rewards.py`
-documenta y permite probar ambas fórmulas de forma independiente.
+Entorno utilizado: Windows, PowerShell, Python 3.12.10 y PyTorch
+2.14.1+cpu.
 
-## Diseño experimental (comparación de recompensas)
-
-- Datos de entrenamiento: `resultados/train.csv`; validación:
-  `resultados/validacion.csv`; held-out (`resultados/heldout.csv`) reservado
-  para una evaluación final posterior.
-- DQN: red 64-64 ReLU, Adam, replay buffer, target network, exploración
-  epsilon-greedy.
-- 3 semillas emparejadas: 42, 123, 2026; 30.000 pasos por semilla y
-  recompensa.
-- Episodios de entrenamiento de 256 pasos con inicio aleatorio. Validación
-  cronológica completa y política greedy.
-- Costos: 0,001 por unidad de cambio de posición; capital inicial 100.000.
-- La métrica de selección es el retorno neto medio en validación, condicionada
-  a drawdown y estabilidad; se evita seleccionar por una sola semilla.
-
-### Evidencias de la comparación A vs B
-- `resultados/configuracion.json`: parámetros.
-- `resultados/historial_entrenamiento.csv`: recompensa por episodio.
-- `resultados/comparacion_A_B.csv`: resultados por semilla y función.
-- `resultados/resumen_A_B.csv`: medias y desviaciones estándar.
-
-### Análisis de conducta y reward hacking
-1. **Inactividad:** `exposicion_0` próxima a 1 y `operaciones` próximas a 0. Comparar contra política siempre efectivo (retorno 0).
-2. **Sobreoperación:** `operaciones_por_1000_pasos` y `rotacion_total` altos; revisar si los costos absorben retornos.
-3. **Riesgo excesivo:** `exposicion_100` alta y drawdown profundo; comparar con exposición fija 100 %.
-4. **Explotación de simulación:** verificar que el agente no observe el precio t+1 y que los costos se descuenten exactamente una vez. El entorno supone ejecución al cierre sin spread/slippage y una posición objetivo constante entre decisiones; estas simplificaciones limitan la validez externa.
-5. **Estabilidad:** comparar la desviación estándar entre semillas, no solamente el mejor resultado.
-
-### Criterio para recomendar una recompensa
-Elegir B si mejora de forma consistente retorno neto o drawdown sin elevar
-mucho la rotación, ni inducir inactividad. Elegir A si B no muestra ventajas
-consistentes. Si ninguna supera efectivo o los baselines fijos con riesgo
-aceptable, declarar el resultado inconcluso y no usar held-out para ajustar.
-Con los datos disponibles, la recompensa elegida para el agente final es
-**A (retorno simple neto)**, por menor costo y rotación promedio, menor
-dispersión entre semillas y retorno medio apenas superior; no se demuestra
-superioridad estadística firme (solo tres semillas, pérdidas severas en
-ambas variantes y diferencia de retorno media pequeña).
-
-### Nota técnica
-Las funciones de recompensa A y B son transformaciones crecientes del mismo
-cociente de capital por paso, pero su suma acumulada puede inducir políticas
-diferentes. El log-retorno acumulado equivale al logaritmo del crecimiento
-total del capital para trayectorias positivas; no garantiza por sí mismo un
-menor drawdown. El término `truncated` del entorno indica finalización
-temporal y aquí se trata como final del episodio de entrenamiento.
-
-## Agente DQN y entrenamiento
-
-El agente DQN se implementa en módulos reutilizables y documentados:
-
-- `src/agent.py`: `QNet`, `ReplayBuffer`, calendario de epsilon y la clase
-  `DQNAgent` (red online/target, política epsilon-greedy, aprendizaje con
-  *smooth L1 loss* y recorte de gradiente, sincronización periódica del
-  target, guardado/carga de checkpoints).
-- `src/train.py`: script/CLI de entrenamiento, validación y congelamiento del
-  modelo final, con semillas fijas y registro de historial.
-- `tests/test_agente.py`: pruebas unitarias de `QNet`, el calendario de
-  epsilon, el `ReplayBuffer` y la reproducibilidad/guardado del `DQNAgent`.
-
-### Arquitectura y algoritmo
-
-- **Algoritmo:** DQN (Deep Q-Network) con red objetivo (*target network*) y
-  repetición de experiencia (*experience replay*).
-- **Red:** `obs -> Linear(64) -> ReLU -> Linear(64) -> ReLU -> Linear(n_acciones=3)`.
-- **Optimizador:** Adam, `lr = 0.0005`.
-- **Descuento:** `gamma = 0.99`.
-- **Lote de entrenamiento:** `batch_size = 64`.
-- **Replay buffer:** tamaño `20.000`, FIFO (`deque`), muestreo uniforme;
-  aprendizaje comienza tras `inicio_aprendizaje = 1.000` transiciones.
-- **Red objetivo:** se sincroniza con la red online cada
-  `frecuencia_target = 500` pasos de aprendizaje.
-- **Exploración:** epsilon-greedy con calendario lineal,
-  `epsilon: 1.00 -> 0.05` en `epsilon_decay = 20.000` pasos, luego constante.
-- **Pérdida:** Huber/Smooth L1 entre el valor Q estimado y el objetivo
-  `r + gamma * (1 - terminado) * max_a Q_objetivo(s', a)`.
-- **Recorte de gradiente:** norma máxima 10.
-- **Pasos por corrida:** `30.000`; episodios de entrenamiento de `256` pasos
-  con inicio aleatorio (no se hace *bootstrap* a través del límite del
-  episodio).
-- **Criterio de parada:** número fijo de pasos de entrenamiento (`30.000`);
-  no hay parada temprana basada en validación para evitar ajustar sobre datos
-  de evaluación.
-- **Capital inicial:** `$100.000`; **costo de transacción:** `0,10%` por
-  unidad de rotación.
-- **Recompensa final usada para congelar el modelo:** **A (retorno simple
-  neto)**.
-
-### Semillas, versiones y reproducibilidad
-
-- Semillas fijadas: `random`, `numpy` y `torch` vía `fijar_semillas(seed)`;
-  además `env.action_space.seed(seed)` y `env.reset(seed=seed)`.
-- Semillas de entrenamiento/validación: `42`, `123`, `2026`.
-- Entrenamiento ejecutado en **CPU**; con las mismas semillas los resultados
-  son reproducibles en CPU. **Advertencia de no determinismo:** si se corre en
-  GPU, algunas operaciones de cuDNN no son deterministas salvo que se active
-  `torch.use_deterministic_algorithms(True)` (no requerido aquí porque no se
-  usó GPU).
-- Versiones utilizadas al generar los resultados de este entregable:
-  `torch 2.14.1+cpu`, `numpy 2.5.4`, `pandas 3.0.6`, `gymnasium 1.4.0`
-  (Python 3.12).
-
-### Cómo entrenar el agente final
-
-```bash
-python -m src.train                       # entrena 3 semillas, valida y congela el modelo final
-python -m src.train --pasos 2000          # corrida rápida de verificación
-python -m src.train --semillas 42         # entrenar solo una semilla
-python -m src.train --recompensa log      # entrenar con la recompensa B
-python -m src.train --no-congelar         # entrenar/validar sin seleccionar modelo final
+```powershell
+uv venv --python 3.12.10 --prompt RL-U5
+.\.venv\Scripts\Activate.ps1
+uv pip install -r requirements.txt
+uv pip install "torch==2.14.1" --index-url https://download.pytorch.org/whl/cpu
+uv pip check
+python -m pytest .\tests -q
 ```
 
-### Regla de selección y modelo congelado
+Omitir la creación del entorno si ya existe.
 
-De las tres semillas entrenadas con la recompensa final (A), se congela la
-que obtiene el **mayor retorno en validación**, siempre que su máximo
-drawdown no sea peor que `1,15x` la mediana de drawdown del grupo (evita
-congelar una semilla con retorno alto pero riesgo desproporcionado). El
-held-out **no** se usa para esta decisión.
+La última ejecución reportada obtuvo 42 pruebas aprobadas y dos
+advertencias de Gymnasium por los límites infinitos de los indicadores
+del espacio de observación. Estas advertencias no son errores.
 
-**Resultado de esta ejecución** (validación, `resultados/validacion_entrenamiento_agente.csv`):
+Los módulos de evaluación se verificaron mediante su ejecución y la
+reproducción del resultado de validación del modelo congelado; no se
+atribuyen a esas 42 pruebas comprobaciones que no contienen.
 
-| Semilla | Retorno | Max Drawdown | Operaciones | Costos totales |
-| :--- | :--- | :--- | :--- | :--- |
-| 42 | -61.04% | -65.75% | 999 | 30,328.97 |
-| 123 | -84.17% | -84.21% | 1,947 | 68,434.65 |
-| **2026 (congelada)** | **-45.34%** | **-45.76%** | 416 | 15,547.66 |
+## 4. Datos y prevención de información futura
 
-La semilla **2026** domina en retorno y en drawdown frente a las otras dos, por
-lo que la regla de selección la elige de forma inequívoca. El checkpoint
-congelado queda en `resultados/modelo_final.pt`, con su configuración y
-métricas en `resultados/configuracion_final.json`, listo para una evaluación
-posterior sobre `heldout.csv`.
+El análisis exploratorio actualizado y la justificación del estado se
+documentan en [Resultados de la Actividad 1](docs/resultados_actividad1.md).
+Las estadísticas y cinco figuras se encuentran en `eda_actividad1/`
+y se generan con `python -m src.eda_actividad1`.
 
-**Nota honesta sobre el resultado:** el agente sigue perdiendo capital de
-forma importante en validación interna (todas las semillas quedan muy por
-debajo del baseline "siempre efectivo", que conserva 0 % de retorno). Esto no
-se oculta ni se "arregla" artificialmente: se documenta como limitación a
-discutir en el análisis final del proyecto.
+Fuente histórica: Bitfinex2, BTC/USDT, frecuencia horaria.
 
-### Evidencias del entrenamiento del agente
-- `src/agent.py`, `src/train.py`
-- `tests/test_agente.py`
-- `resultados/configuracion_agente.json` (configuración de la última corrida)
-- `resultados/configuracion_final.json` (modelo congelado + regla de selección)
-- `resultados/historial_entrenamiento_agente.csv` (recompensa/pérdida/epsilon por episodio)
-- `resultados/validacion_entrenamiento_agente.csv` (métricas por semilla)
-- `resultados/dqn_simple_{42,123,2026}.pt` (checkpoints por semilla)
-- `resultados/modelo_final.pt` (checkpoint congelado, semilla 2026)
+Los datos vigentes están en `resultados_corregidos/`:
+
+| Partición | Filas | Segmentos continuos |
+|---|---:|---:|
+| Entrenamiento | 21.606 | 31 |
+| Validación | 4.939 | 1 |
+| Held-out | 4.916 | 2 |
+
+La división original fue cronológica, aproximadamente 70/15/15.
+Después de corregir los huecos se conservaron las fechas de corte,
+sin recalcular esos porcentajes.
+
+Los indicadores se calculan dentro de segmentos horarios continuos,
+con 24 observaciones de calentamiento. No se imputaron precios.
+El escalado se ajustó únicamente con entrenamiento.
+
+La serie local se recuperó de las columnas OHLCV de los CSV anteriores.
+No se recuperaron las 24 observaciones iniciales descartadas en el
+procesamiento original.
+
+El held-out no se utilizó para seleccionar recompensas, hiperparámetros
+ni checkpoint. Después de evaluarlo no se reajustó el modelo.
+
+Los scripts históricos `descargar_datos.py`, `analizar_datos.py` y
+`ejecutar_todo.py` se conservan como antecedentes. No constituyen por sí
+solos el procedimiento actualizado de regeneración de los CSV corregidos.
+
+## 5. Estado, acciones y entorno
+
+La observación contiene:
+
+- Retorno de una hora, escalado.
+- Distancia a la media móvil de 24 observaciones horarias, escalada.
+- Volatilidad de 24 retornos horarios, escalada.
+- Proporción real del capital invertido, entre 0 y 1.
+
+| Acción | Objetivo de inversión |
+|---|---:|
+| 0 | 0 % |
+| 1 | 50 % |
+| 2 | 100 % |
+
+En t, el agente observa información hasta el cierre y elige un objetivo.
+El entorno calcula la compra o venta necesaria y cobra una comisión
+del 0,1 % sobre el importe negociado.
+
+El objetivo se define sobre el capital después de costos. Luego se
+aplica el movimiento del precio de t a t+1 al activo mantenido.
+
+La posición real cambia con el precio. Repetir el objetivo 50 % puede
+requerir rebalanceo y generar costos.
+
+Cada episodio permanece dentro de un segmento continuo. `reset()`
+reinicia capital y posición; puede elegirse el segmento mediante:
+
+```python
+env.reset(options={"segmento": 0})
+```
+
+Supuestos: capital inicial de 100.000 unidades monetarias, ejecución
+al cierre observado, sin spread, deslizamiento, apalancamiento ni ventas
+en corto. El efectivo no genera intereses y no se fuerza liquidación final.
+
+### Ejemplo de uso
+
+```python
+import pandas as pd
+from src.environment import EntornoInversion
+
+datos = pd.read_csv(
+    "resultados_corregidos/train.csv",
+    index_col=0,
+    parse_dates=True,
+)
+
+env = EntornoInversion(datos, tasa_costo=0.001, recompensa="simple")
+obs, info = env.reset(seed=42, options={"segmento": 0})
+env.action_space.seed(42)
+
+while True:
+    accion = env.action_space.sample()
+    obs, recompensa, terminado, truncado, info = env.step(accion)
+    if terminado or truncado:
+        break
+
+print(info["capital"], info["costo_total"])
+```
+
+Este ejemplo recorre un episodio dentro del segmento seleccionado.
+
+## 6. Comparación de recompensas
+
+Las recompensas reciben el capital antes y después del paso:
+
+- Simple: `V_siguiente / V_actual - 1`.
+- Logarítmica: `log(V_siguiente / V_actual)`.
+
+Los costos ya están descontados del capital; no se descuentan nuevamente
+en la recompensa.
+
+Se ejecutaron seis entrenamientos: ambas recompensas con semillas
+42, 123 y 2026, y 30.000 pasos por corrida.
+
+| Métrica de validación | Simple | Log |
+|---|---:|---:|
+| Retorno medio | −57,10 % | −57,11 % |
+| Desviación del retorno | 13,59 pp | 21,52 pp |
+| Máximo drawdown medio | −60,39 % | −63,29 % |
+| Costos medios | 33.128,30 | 35.973,44 |
+
+Se eligió recompensa simple por su retorno medio prácticamente igual,
+menor dispersión, menor caída promedio y menores costos promedio.
+No se afirma superioridad estadística con tres semillas.
+
+```powershell
+python -m src.experimento
+```
+
+Las evidencias se guardan en `resultados_comparacion_recompensas/`.
+El comando requiere que esa carpeta no exista para evitar sobrescrituras.
+
+## 7. DQN y entrenamiento
+
+| Parámetro | Valor |
+|---|---|
+| Red | 4 entradas → 64 ReLU → 64 ReLU → 3 salidas |
+| Optimizador | Adam |
+| Learning rate | 0,0005 |
+| Gamma | 0,99 |
+| Batch size | 64 |
+| Replay buffer | 20.000 transiciones |
+| Inicio del aprendizaje | 1.000 transiciones |
+| Sincronización target | Cada 500 actualizaciones de aprendizaje |
+| Exploración | Epsilon de 1,00 a 0,05 en 20.000 pasos |
+| Pasos por corrida | 30.000 |
+| Longitud del episodio | 256 transiciones |
+| Pérdida | Smooth L1 |
+| Recorte de gradiente | Norma máxima 10 |
+
+Se fijan semillas de Python, NumPy, PyTorch y entorno.
+Los episodios comienzan aleatoriamente dentro de segmentos admisibles.
+
+El límite artificial de 256 pasos permite bootstrap cuando existe
+continuación dentro del segmento. Al final del segmento disponible
+no se estima continuación.
+
+### Ejemplo de corrida de verificación
+
+Entrena durante 2.000 pasos con la semilla 42, evalúa en validación
+y guarda las salidas en `resultados_dqn_prueba`, sin congelar un modelo final.
+
+```powershell
+# Prueba breve del entrenamiento y la generación de archivos
+python -m src.train --pasos 2000 --semillas 42 --no-congelar --salida resultados_dqn_prueba
+```
+
+Esta corrida comprueba el funcionamiento; no se utiliza para seleccionar
+la recompensa ni el modelo definitivo.
+
+Las salidas de `train.py` se guardan por defecto en `resultados_dqn/`.
+La comparación definitiva se realizó con `src.experimento`, y se congeló
+un checkpoint de esa comparación sin repetir el entrenamiento.
+
+### Modelo congelado
+
+Entre las semillas de recompensa simple se eligió el mayor retorno en
+validación, sujeto a que la magnitud del drawdown no superara 1,15 veces
+la mediana del grupo.
+
+| Semilla | Retorno de validación | Máximo drawdown |
+|---|---:|---:|
+| 42 | −69,46 % | −70,92 % |
+| **123, seleccionada** | **−42,54 %** | **−48,69 %** |
+| 2026 | −59,29 % | −61,55 % |
+
+Checkpoint vigente: `modelo_congelado/modelo_final.pt`.
+
+Configuración y selección:
+`modelo_congelado/configuracion_final.json`.
+
+SHA256:
+
+```text
+e9e7939454641152937860a55c86585b956b498a7bc3892f12aa47678fb3a525
+```
+
+El checkpoint de semilla 2026 del repositorio original de Actividad 4
+pertenece a la versión anterior del experimento y no es el modelo final
+de esta integración.
+
+## 8. Actividad 5 — Evaluación y baselines
+
+Se comparó DQN con comprar y mantener y una política aleatoria uniforme,
+bajo las mismas condiciones de capital, costos y datos.
+
+El held-out se evaluó en dos segmentos independientes:
+
+| Segmento | Período UTC | Pasos |
+|---|---|---:|
+| 0 | 2022-06-09 00:00 a 2022-10-12 07:00 | 3.007 |
+| 1 | 2022-10-13 12:00 a 2022-12-31 23:00 | 1.907 |
+
+Cada segmento reinicia el capital en 100.000 y la posición en cero.
+Sus retornos no se suman ni representan una inversión continua.
+
+| Segmento | Estrategia | Retorno | Máximo drawdown | Costos |
+|---|---|---:|---:|---:|
+| 0 | DQN | −32,20 % | −34,37 % | 20.586,41 |
+| 0 | Comprar y mantener | −36,84 % | −41,67 % | 99,90 |
+| 0 | Aleatorio | −75,36 % | −75,53 % | 67.471,94 |
+| 1 | DQN | −13,40 % | −23,18 % | 4.970,77 |
+| 1 | Comprar y mantener | −10,09 % | −27,03 % | 99,90 |
+| 1 | Aleatorio | −63,60 % | −64,85 % | 53.413,06 |
+
+El DQN presentó menor máxima caída en ambos segmentos, pero no superó
+consistentemente a comprar y mantener en retorno. Todas las estrategias
+evaluadas perdieron capital.
+
+La exposición real media del DQN fue 21,93 % y 8,13 %, respectivamente.
+Su menor drawdown debe interpretarse junto con esa exposición reducida.
+
+El baseline aleatorio utiliza una realización por segmento, con semillas
+42 y 43. No se caracteriza toda su variabilidad.
+
+### Archivos y análisis
+
+- `src/baselines.py`: estrategias de referencia.
+- `src/evaluate.py`: evaluación del modelo y baselines.
+- `src/graficar_evaluacion.py`: generación de figuras.
+- `modelo_congelado/`: checkpoint y configuración final.
+- `evaluacion_validacion/`: comprobación del modelo en validación.
+- `evaluacion_heldout/`: métricas, protocolo, trayectorias y seis figuras.
+- [docs/resultados_actividad5.md](docs/resultados_actividad5.md):
+  análisis completo, figuras, fallos identificados y limitaciones.
+
+### Ejecución
+
+Desde la raíz del proyecto:
+
+```powershell
+python -m src.evaluate --particion validacion
+python -m src.evaluate --particion heldout
+python -m src.graficar_evaluacion
+```
+
+Los comandos de evaluación requieren que sus carpetas de salida no
+existan. Para reproducirlos, utilizar una copia limpia conservando
+las evidencias originales.
+
+El script de gráficos lee las trayectorias guardadas y no repite
+el entrenamiento ni la evaluación.
+
+## 9. Limitaciones y conclusión
+
+El estudio utiliza un activo, un período histórico limitado y tres
+semillas de entrenamiento. Las condiciones del mercado pueden cambiar.
+
+Los huecos y el calentamiento reducen la cobertura temporal. Los
+segmentos se evalúan con reinicios y sin liquidación final. La simulación
+omite spread, deslizamiento e impacto de mercado.
+
+Se identificaron pérdidas horarias importantes durante exposiciones
+totales, pese a que el agente permaneció mayormente en efectivo.
+La inactividad observada no demuestra por sí sola reward hacking.
+
+No se demuestra superioridad consistente del DQN en rentabilidad.
+El resultado se reporta sin reajustar el modelo con el held-out.
+
+## Reproducción de datos y congelación del modelo
+
+Los siguientes comandos reproducen dos procedimientos del proyecto sin
+repetir el entrenamiento ni evaluar nuevamente el agente.
+
+### Reconstrucción de datos corregidos
+
+```powershell
+python -m src.preparar_datos_corregidos
+```
+
+Lee los OHLCV de los CSV originales en `resultados/`, conserva los cortes
+temporales originales y guarda en `resultados_corregidos_reproducidos/`.
+
+Se verificó que los tres CSV reproducidos coinciden con los utilizados
+por el modelo en fechas, columnas y valores, con tolerancias numéricas
+`rtol=1e-10` y `atol=1e-12`.
+
+### Congelación del modelo seleccionado
+
+```powershell
+python -m src.congelar_modelo
+```
+
+Aplica la regla documentada de selección de semilla para la recompensa
+simple y guarda en `modelo_congelado_reproducido/`. La elección de la
+recompensa se sustenta en la comparación A/B previamente documentada.
+
+La reproducción seleccionó la semilla 123 y obtuvo el mismo SHA256
+del checkpoint evaluado:
+
+```text
+e9e7939454641152937860a55c86585b956b498a7bc3892f12aa47678fb3a525
+```
+
+Ambos scripts requieren que sus carpetas de salida no existan.
+Las carpetas oficiales del proyecto siguen siendo
+`resultados_corregidos/` y `modelo_congelado/`.
