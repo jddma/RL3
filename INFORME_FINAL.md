@@ -117,3 +117,7 @@ Se ilustra la progresión de los costos acumulados por concepto de comisiones de
 3. **Qué cambiaría:** Implementaría una plataforma de MLOps (ej. Weights & Biases) desde el primer día para automatizar el seguimiento de la convergencia de la recompensa y simplificar la integración.
 4. **Comportamiento sin explicar:** Las pérdidas abruptas durante las pocas ventanas en las que el agente decidió exponerse al 100%. Cuesta determinar si fueron trampas del mercado o ruido en la política de la red.
 5. **Diferencia teoría vs aplicación:** En la teoría clásica, el entorno es estacionario. En series temporales financieras como BTC/USDT, el cambio constante de régimen de mercado hace que un agente robusto en validación fracase en datos futuros invisibles.
+
+## 9. Instrucciones de Reproducibilidad
+El repositorio está encapsulado utilizando el gestor `uv` con Python 3.12.10 y PyTorch 2.14.1+cpu. Los comandos de reconstrucción de datos (`src.preparar_datos_corregidos`) validan la identidad de los CSV mediante tolerancias numéricas estrictas. La congelación del modelo garantiza la selección algorítmica de la semilla 123 (SHA256: `e9e7939...`) sin intervención manual tras observar la validación.
+
