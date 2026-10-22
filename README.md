@@ -396,7 +396,3 @@ Ambos scripts requieren que sus carpetas de salida no existan.
 Las carpetas oficiales del proyecto siguen siendo
 `resultados_corregidos/` y `modelo_congelado/`.
 
-
-
-## 9. Instrucciones de Reproducibilidad
-El repositorio está encapsulado utilizando el gestor `uv` con Python 3.12.10 y PyTorch 2.14.1+cpu. Los comandos de reconstrucción de datos (`src.preparar_datos_corregidos`) validan la identidad de los CSV mediante tolerancias numéricas estrictas. La congelación del modelo garantiza la selección algorítmica de la semilla 123 (SHA256: `e9e7939...`) sin intervención manual tras observar la validación.
